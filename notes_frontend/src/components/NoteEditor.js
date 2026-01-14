@@ -28,6 +28,19 @@ export default function NoteEditor({ note, onChange, onRequestDelete }) {
     if (titleRef.current) titleRef.current.focus();
   }, [note?.id]);
 
+  // Compute memoized values unconditionally to satisfy Rules of Hooks.
+  // When note is null, we safely fall back to "now"; these values won't be rendered anyway.
+  const createdIso = note?.createdAt || note?.updatedAt || new Date().toISOString();
+  const updatedIso = note?.updatedAt || note?.createdAt || new Date().toISOString();
+
+  const createdText = useMemo(() => formatDateTime(createdIso), [createdIso]);
+  const updatedText = useMemo(() => formatDateTime(updatedIso), [updatedIso]);
+
+  const createdTitle = useMemo(() => new Date(createdIso).toISOString(), [createdIso]);
+  const updatedTitle = useMemo(() => new Date(updatedIso).toISOString(), [updatedIso]);
+
+  const displayTitle = useMemo(() => deriveTitleFromNote(note?.title, note?.body), [note?.title, note?.body]);
+
   if (!note) {
     return (
       <main className="Main" role="main">
@@ -38,17 +51,6 @@ export default function NoteEditor({ note, onChange, onRequestDelete }) {
       </main>
     );
   }
-
-  const createdIso = note.createdAt || note.updatedAt || new Date().toISOString();
-  const updatedIso = note.updatedAt || note.createdAt || new Date().toISOString();
-
-  const createdText = useMemo(() => formatDateTime(createdIso), [createdIso]);
-  const updatedText = useMemo(() => formatDateTime(updatedIso), [updatedIso]);
-
-  const createdTitle = useMemo(() => new Date(createdIso).toISOString(), [createdIso]);
-  const updatedTitle = useMemo(() => new Date(updatedIso).toISOString(), [updatedIso]);
-
-  const displayTitle = deriveTitleFromNote(note.title, note.body);
 
   return (
     <main className="Main" role="main" aria-label="Note editor">
