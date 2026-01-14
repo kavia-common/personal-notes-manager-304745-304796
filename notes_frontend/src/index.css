@@ -5,3 +5,14 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* Respect keyboard users: keep focus rings consistent (theme uses --focus in App.css). */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+button,
+input,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}

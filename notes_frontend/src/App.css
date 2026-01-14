@@ -91,6 +91,48 @@ body {
   color: var(--muted);
 }
 
+.Header__spacer {
+  flex: 1;
+}
+
+/* Small, minimal icon button (Ocean theme) */
+.IconButton {
+  border: 1px solid rgba(17, 24, 39, 0.12);
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 10px 10px;
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 160ms ease, background 160ms ease;
+  box-shadow: 0 10px 18px rgba(17, 24, 39, 0.06);
+}
+
+.IconButton:hover {
+  transform: translateY(-1px);
+  background: rgba(37, 99, 235, 0.06);
+}
+
+.IconButton:active {
+  transform: translateY(0px);
+}
+
+.IconButton:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+}
+
+.IconButton__bars {
+  display: inline-grid;
+  gap: 4px;
+}
+
+.IconButton__bars > span {
+  width: 18px;
+  height: 2px;
+  border-radius: 999px;
+  background: rgba(17, 24, 39, 0.75);
+}
+
 .Layout {
   max-width: 1200px;
   margin: 0 auto;
@@ -209,6 +251,29 @@ body {
 .EditorCard__meta {
   font-size: 12px;
   color: var(--muted);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.MetaRow {
+  display: inline-flex;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.MetaLabel {
+  font-weight: 700;
+  color: rgba(17, 24, 39, 0.55);
+}
+
+.MetaValue {
+  color: rgba(17, 24, 39, 0.72);
+}
+
+.MetaDot {
+  opacity: 0.6;
 }
 
 .Field {
@@ -334,6 +399,60 @@ body {
   color: var(--muted);
 }
 
+/* Modal (accessible delete confirmation) */
+.ModalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: rgba(17, 24, 39, 0.45);
+  display: grid;
+  place-items: center;
+  padding: 18px;
+}
+
+.ModalCard {
+  width: min(520px, 100%);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 16px;
+  box-shadow: 0 30px 80px rgba(17, 24, 39, 0.20);
+  padding: 16px;
+  backdrop-filter: blur(10px);
+}
+
+.ModalCard__title {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  letter-spacing: 0.2px;
+}
+
+.ModalCard__text {
+  margin: 0 0 14px 0;
+  color: rgba(17, 24, 39, 0.72);
+  line-height: 1.45;
+  font-size: 14px;
+}
+
+.ModalCard__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Screen-reader only */
+.SrOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* Responsive */
 @media (max-width: 980px) {
   .Layout {
@@ -346,7 +465,49 @@ body {
     grid-template-columns: 1fr;
   }
 
+  /* Sidebar becomes an overlay drawer on small screens */
+  .Sidebar--overlay {
+    position: fixed;
+    top: 74px; /* header height (approx) */
+    left: 14px;
+    right: 14px;
+    z-index: 25;
+    max-height: calc(100vh - 100px);
+    transition: transform 180ms ease, opacity 180ms ease;
+    transform-origin: top center;
+  }
+
+  .Sidebar--overlay[data-open="false"] {
+    transform: translateY(-6px) scale(0.99);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .Sidebar--overlay[data-open="true"] {
+    transform: translateY(0px) scale(1);
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .SidebarOverlay {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    cursor: default;
+  }
+
   .Sidebar__list {
-    max-height: 40vh;
+    max-height: 50vh;
+  }
+
+  .Header__brand {
+    padding: 14px 14px;
+  }
+
+  .Layout {
+    padding: 14px;
   }
 }

@@ -1,8 +1,20 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { deriveTitleFromNote } from '../utils/storage';
 
+function formatDateTime(iso) {
+  const d = new Date(iso || Date.now());
+  return d.toLocaleString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
 // PUBLIC_INTERFACE
-export default function NoteEditor({ note, onChange, onDelete }) {
+export default function NoteEditor({ note, onChange, onRequestDelete }) {
   /**
    * Main editor area for the selected note.
    * `onChange` accepts partial updates: {title, body}
@@ -20,32 +32,51 @@ export default function NoteEditor({ note, onChange, onDelete }) {
     return (
       <main className="Main" role="main">
         <div className="EmptyMain" role="status">
-          <h2 className="EmptyMain__title">Select a note</h2>
-          <p className="EmptyMain__text">Choose a note from the sidebar or create a new one.</p>
+          <h2 className="EmptyMain__title">No note selected</h2>
+          <p className="EmptyMain__text">Choose a note from the sidebar, or create a new one.</p>
         </div>
       </main>
     );
   }
 
-  const createdText = new Date(note.createdAt || note.updatedAt || Date.now()).toLocaleString();
-  const updatedText = new Date(note.updatedAt || note.createdAt || Date.now()).toLocaleString();
+  const createdIso = note.createdAt || note.updatedAt || new Date().toISOString();
+  const updatedIso = note.updatedAt || note.createdAt || new Date().toISOString();
+
+  const createdText = useMemo(() => formatDateTime(createdIso), [createdIso]);
+  const updatedText = useMemo(() => formatDateTime(updatedIso), [updatedIso]);
+
+  const createdTitle = useMemo(() => new Date(createdIso).toISOString(), [createdIso]);
+  const updatedTitle = useMemo(() => new Date(updatedIso).toISOString(), [updatedIso]);
+
+  const displayTitle = deriveTitleFromNote(note.title, note.body);
 
   return (
-    <main className="Main" role="main">
+    <main className="Main" role="main" aria-label="Note editor">
       <div className="EditorCard">
         <div className="EditorCard__top">
           <div className="EditorCard__meta" aria-label="Note timestamps">
-            Created {createdText} · Updated {updatedText}
+            <span className="MetaRow">
+              <span className="MetaLabel">Created:</span>{' '}
+              <span className="MetaValue" title={createdTitle}>
+                {createdText}
+              </span>
+            </span>
+            <span className="MetaDot" aria-hidden="true">
+              ·
+            </span>
+            <span className="MetaRow">
+              <span className="MetaLabel">Updated:</span>{' '}
+              <span className="MetaValue" title={updatedTitle}>
+                {updatedText}
+              </span>
+            </span>
           </div>
 
           <button
+            type="button"
             className="Button Button--danger"
-            onClick={() => {
-              const title = deriveTitleFromNote(note.title, note.body);
-              // eslint-disable-next-line no-alert
-              const ok = window.confirm(`Delete "${title}"? This cannot be undone.`);
-              if (ok) onDelete(note.id);
-            }}
+            onClick={() => onRequestDelete(note.id)}
+            aria-label={`Delete note ${displayTitle}`}
           >
             Delete
           </button>
@@ -63,6 +94,7 @@ export default function NoteEditor({ note, onChange, onDelete }) {
             value={note.title ?? ''}
             onChange={(e) => onChange({ title: e.target.value })}
             placeholder="Untitled"
+            aria-label="Note title"
           />
         </div>
 
@@ -77,6 +109,7 @@ export default function NoteEditor({ note, onChange, onDelete }) {
             onChange={(e) => onChange({ body: e.target.value })}
             placeholder="Write your note…"
             rows={14}
+            aria-label="Note body"
           />
         </div>
       </div>
