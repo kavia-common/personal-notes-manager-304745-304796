@@ -4,8 +4,60 @@ const STORAGE_KEY = 'notes_frontend.notes.v1';
  * Returns current epoch time as an ISO string.
  * Kept as a helper so formatting can be standardized later.
  */
-function nowIso() {
+// PUBLIC_INTERFACE
+export function nowIso() {
+  /** Returns current time in ISO-8601 format. */
   return new Date().toISOString();
+}
+
+/**
+ * Trim + normalize whitespace for display.
+ */
+function normalizeWhitespace(s) {
+  return String(s || '').replace(/\s+/g, ' ').trim();
+}
+
+// PUBLIC_INTERFACE
+export function deriveTitleFromNote(title, body) {
+  /**
+   * Returns a safe, user-friendly title.
+   * - Prefers explicit title when present
+   * - Falls back to first line of body
+   * - Falls back to "Untitled"
+   */
+  const t = normalizeWhitespace(title);
+  if (t) return t;
+
+  const firstLine = String(body || '').split('\n').map((l) => normalizeWhitespace(l))[0] || '';
+  if (firstLine) return firstLine.slice(0, 80);
+
+  return 'Untitled';
+}
+
+// PUBLIC_INTERFACE
+export function normalizeNote(raw) {
+  /**
+   * Normalizes a note object to the current schema, ensuring timestamps exist and are valid.
+   */
+  const createdAt =
+    typeof raw?.createdAt === 'string' && !Number.isNaN(Date.parse(raw.createdAt)) ? raw.createdAt : nowIso();
+
+  // If updatedAt is missing/invalid, keep it >= createdAt.
+  const updatedCandidate =
+    typeof raw?.updatedAt === 'string' && !Number.isNaN(Date.parse(raw.updatedAt)) ? raw.updatedAt : createdAt;
+
+  const updatedAt = Date.parse(updatedCandidate) < Date.parse(createdAt) ? createdAt : updatedCandidate;
+
+  const title = typeof raw?.title === 'string' ? raw.title : '';
+  const body = typeof raw?.body === 'string' ? raw.body : '';
+
+  return {
+    id: String(raw?.id || ''),
+    title,
+    body,
+    createdAt,
+    updatedAt,
+  };
 }
 
 /**
@@ -56,13 +108,7 @@ export function loadNotesFromStorage() {
     // Basic normalization/validation; keep forward-compatible.
     const normalized = parsed
       .filter((n) => n && typeof n === 'object' && typeof n.id === 'string')
-      .map((n) => ({
-        id: n.id,
-        title: typeof n.title === 'string' ? n.title : '',
-        body: typeof n.body === 'string' ? n.body : '',
-        createdAt: typeof n.createdAt === 'string' ? n.createdAt : nowIso(),
-        updatedAt: typeof n.updatedAt === 'string' ? n.updatedAt : nowIso(),
-      }));
+      .map((n) => normalizeNote(n));
 
     return normalized.length ? normalized : createSeedNotes();
   } catch (e) {
@@ -90,7 +136,7 @@ export function createEmptyNote() {
   const createdAt = nowIso();
   return {
     id: createId(),
-    title: 'Untitled',
+    title: '',
     body: '',
     createdAt,
     updatedAt: createdAt,

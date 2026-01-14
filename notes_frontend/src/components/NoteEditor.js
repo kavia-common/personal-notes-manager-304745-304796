@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { deriveTitleFromNote } from '../utils/storage';
 
 // PUBLIC_INTERFACE
 export default function NoteEditor({ note, onChange, onDelete }) {
@@ -26,18 +27,21 @@ export default function NoteEditor({ note, onChange, onDelete }) {
     );
   }
 
+  const createdText = new Date(note.createdAt || note.updatedAt || Date.now()).toLocaleString();
+  const updatedText = new Date(note.updatedAt || note.createdAt || Date.now()).toLocaleString();
+
   return (
     <main className="Main" role="main">
       <div className="EditorCard">
         <div className="EditorCard__top">
-          <div className="EditorCard__meta" aria-label="Note updated time">
-            Updated {new Date(note.updatedAt || Date.now()).toLocaleString()}
+          <div className="EditorCard__meta" aria-label="Note timestamps">
+            Created {createdText} · Updated {updatedText}
           </div>
 
           <button
             className="Button Button--danger"
             onClick={() => {
-              const title = (note.title || '').trim() || 'Untitled';
+              const title = deriveTitleFromNote(note.title, note.body);
               // eslint-disable-next-line no-alert
               const ok = window.confirm(`Delete "${title}"? This cannot be undone.`);
               if (ok) onDelete(note.id);
@@ -56,7 +60,7 @@ export default function NoteEditor({ note, onChange, onDelete }) {
             ref={titleRef}
             className="Input Input--title"
             type="text"
-            value={note.title}
+            value={note.title ?? ''}
             onChange={(e) => onChange({ title: e.target.value })}
             placeholder="Untitled"
           />
@@ -69,7 +73,7 @@ export default function NoteEditor({ note, onChange, onDelete }) {
           <textarea
             id={bodyId}
             className="Textarea"
-            value={note.body}
+            value={note.body ?? ''}
             onChange={(e) => onChange({ body: e.target.value })}
             placeholder="Write your note…"
             rows={14}

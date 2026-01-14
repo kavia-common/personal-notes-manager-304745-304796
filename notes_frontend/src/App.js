@@ -3,7 +3,13 @@ import './App.css';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import NoteEditor from './components/NoteEditor';
-import { createEmptyNote, loadNotesFromStorage, saveNotesToStorage } from './utils/storage';
+import {
+  createEmptyNote,
+  deriveTitleFromNote,
+  loadNotesFromStorage,
+  nowIso,
+  saveNotesToStorage,
+} from './utils/storage';
 
 function sortNotesByUpdatedAtDesc(notes) {
   return [...notes].sort((a, b) => {
@@ -13,11 +19,21 @@ function sortNotesByUpdatedAtDesc(notes) {
   });
 }
 
+function filterNotes(notes, searchQuery) {
+  const q = (searchQuery || '').trim().toLowerCase();
+  if (!q) return notes;
+  return notes.filter((n) => {
+    const title = (n.title || '').toLowerCase();
+    const body = (n.body || '').toLowerCase();
+    return title.includes(q) || body.includes(q);
+  });
+}
+
 // PUBLIC_INTERFACE
 function App() {
   /** Notes app entry point: manages notes state and persistence. */
   const [notes, setNotes] = useState(() => loadNotesFromStorage());
-  const [selectedId, setSelectedId] = useState(() => (loadNotesFromStorage()[0]?.id ?? null));
+  const [selectedId, setSelectedId] = useState(() => loadNotesFromStorage()[0]?.id ?? null);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Keep storage in sync whenever notes change.
@@ -25,17 +41,36 @@ function App() {
     saveNotesToStorage(notes);
   }, [notes]);
 
-  // Ensure selected note exists; if deleted, pick next best.
-  useEffect(() => {
-    if (selectedId && notes.some((n) => n.id === selectedId)) return;
-    setSelectedId(notes[0]?.id ?? null);
-  }, [notes, selectedId]);
-
   const orderedNotes = useMemo(() => sortNotesByUpdatedAtDesc(notes), [notes]);
+  const filteredNotes = useMemo(() => filterNotes(orderedNotes, searchQuery), [orderedNotes, searchQuery]);
+
   const selectedNote = useMemo(
     () => orderedNotes.find((n) => n.id === selectedId) || null,
     [orderedNotes, selectedId]
   );
+
+  // Ensure selected note exists; if deleted, select most recently updated remaining, or clear selection.
+  useEffect(() => {
+    if (!selectedId) {
+      setSelectedId(orderedNotes[0]?.id ?? null);
+      return;
+    }
+    if (orderedNotes.some((n) => n.id === selectedId)) return;
+
+    setSelectedId(orderedNotes[0]?.id ?? null);
+  }, [orderedNotes, selectedId]);
+
+  // Search filtering should not "break" selection:
+  // If user has an active search and the current selection is not in results, pick the top matching note.
+  useEffect(() => {
+    const q = (searchQuery || '').trim();
+    if (!q) return;
+
+    const selectionInFiltered = filteredNotes.some((n) => n.id === selectedId);
+    if (selectionInFiltered) return;
+
+    setSelectedId(filteredNotes[0]?.id ?? null);
+  }, [filteredNotes, searchQuery, selectedId]);
 
   // PUBLIC_INTERFACE
   const handleCreateNote = () => {
@@ -57,16 +92,28 @@ function App() {
     setNotes((prev) => {
       const next = prev.map((n) => {
         if (n.id !== selectedNote.id) return n;
+
+        const safeTitle = typeof patch.title === 'string' ? patch.title : n.title;
+        const safeBody = typeof patch.body === 'string' ? patch.body : n.body;
+
+        // If title is cleared, gracefully auto-title from body (or Untitled).
+        // This prevents empty titles while keeping the placeholder UX in the editor.
+        const derivedTitle = deriveTitleFromNote(safeTitle, safeBody);
+
         const updated = {
           ...n,
           ...patch,
-          updatedAt: new Date().toISOString(),
+          title: derivedTitle === 'Untitled' && normalizeWhitespace(safeTitle) === '' ? '' : derivedTitle,
+          body: safeBody,
+          createdAt: n.createdAt || nowIso(),
+          updatedAt: nowIso(),
         };
-        // Avoid empty titles but allow user to clear while typing.
-        if (typeof updated.title !== 'string') updated.title = '';
-        if (typeof updated.body !== 'string') updated.body = '';
+
+        // Note: we intentionally allow storing empty string title if it's truly empty and body is empty,
+        // so UI can show placeholder. Sidebar will still render a derived title.
         return updated;
       });
+
       return sortNotesByUpdatedAtDesc(next);
     });
   };
@@ -74,6 +121,7 @@ function App() {
   // PUBLIC_INTERFACE
   const handleDeleteNote = (id) => {
     setNotes((prev) => prev.filter((n) => n.id !== id));
+    // selection will be fixed by the effect above using orderedNotes (most recently updated).
   };
 
   return (
@@ -83,6 +131,7 @@ function App() {
       <div className="Layout">
         <Sidebar
           notes={orderedNotes}
+          filteredNotes={filteredNotes}
           selectedId={selectedId}
           searchQuery={searchQuery}
           onSearchQueryChange={setSearchQuery}
@@ -94,6 +143,10 @@ function App() {
       </div>
     </div>
   );
+}
+
+function normalizeWhitespace(s) {
+  return String(s || '').replace(/\s+/g, ' ').trim();
 }
 
 export default App;

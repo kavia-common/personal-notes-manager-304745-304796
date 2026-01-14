@@ -1,8 +1,10 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
+import { deriveTitleFromNote } from '../utils/storage';
 
 // PUBLIC_INTERFACE
 export default function Sidebar({
   notes,
+  filteredNotes,
   selectedId,
   searchQuery,
   onSearchQueryChange,
@@ -11,6 +13,7 @@ export default function Sidebar({
 }) {
   /**
    * Sidebar for searching and selecting notes.
+   * Filtering is computed in App to keep selection + results behavior consistent.
    */
   const searchId = 'notes-search';
   const searchRef = useRef(null);
@@ -20,15 +23,7 @@ export default function Sidebar({
     if (searchRef.current) searchRef.current.focus();
   }, []);
 
-  const filtered = useMemo(() => {
-    const q = (searchQuery || '').trim().toLowerCase();
-    if (!q) return notes;
-    return notes.filter((n) => {
-      const title = (n.title || '').toLowerCase();
-      const body = (n.body || '').toLowerCase();
-      return title.includes(q) || body.includes(q);
-    });
-  }, [notes, searchQuery]);
+  const list = filteredNotes ?? notes;
 
   return (
     <aside className="Sidebar" aria-label="Notes sidebar">
@@ -56,16 +51,16 @@ export default function Sidebar({
       </div>
 
       <nav className="Sidebar__list" aria-label="Notes list">
-        {filtered.length === 0 ? (
+        {list.length === 0 ? (
           <div className="EmptyCard" role="status">
             <div className="EmptyCard__title">No matching notes</div>
             <div className="EmptyCard__text">Try a different search, or create a new note.</div>
           </div>
         ) : (
           <ul className="NoteList" role="list">
-            {filtered.map((note) => {
+            {list.map((note) => {
               const isActive = note.id === selectedId;
-              const safeTitle = (note.title || '').trim() || 'Untitled';
+              const safeTitle = deriveTitleFromNote(note.title, note.body);
               return (
                 <li key={note.id} className="NoteList__item">
                   <button
@@ -76,7 +71,7 @@ export default function Sidebar({
                   >
                     <div className="NoteList__title">{safeTitle}</div>
                     <div className="NoteList__meta">
-                      {new Date(note.updatedAt || Date.now()).toLocaleString()}
+                      {new Date(note.updatedAt || note.createdAt || Date.now()).toLocaleString()}
                     </div>
                   </button>
                 </li>
