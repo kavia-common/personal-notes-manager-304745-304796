@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { deriveTitleFromNote } from '../utils/storage';
 
 function formatShortDate(iso) {
@@ -39,14 +39,6 @@ export default function Sidebar({
   }, []);
 
   const list = filteredNotes ?? notes;
-
-  const idToIndex = useMemo(() => {
-    const map = new Map();
-    (list || []).forEach((n, idx) => map.set(n.id, idx));
-    return map;
-  }, [list]);
-
-  const activeIndex = selectedId ? idToIndex.get(selectedId) : -1;
 
   const focusItemAt = (idx) => {
     const container = listRef.current;
@@ -140,7 +132,7 @@ export default function Sidebar({
               <div className="EmptyCard__text">Clear your search to see all notes.</div>
             </div>
           ) : (
-            <ul className="NoteList" role="list" ref={listRef}>
+            <ul className="NoteList" ref={listRef}>
               {list.map((note, idx) => {
                 const isActive = note.id === selectedId;
                 const safeTitle = deriveTitleFromNote(note.title, note.body);
