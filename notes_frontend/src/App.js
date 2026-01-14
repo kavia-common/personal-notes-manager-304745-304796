@@ -6,9 +6,9 @@ import NoteEditor from './components/NoteEditor';
 import {
   createEmptyNote,
   deriveTitleFromNote,
-  loadNotesFromStorage,
+  initNotesState,
   nowIso,
-  saveNotesToStorage,
+  saveNotesSchema,
 } from './utils/storage';
 
 function sortNotesByUpdatedAtDesc(notes) {
@@ -32,13 +32,14 @@ function filterNotes(notes, searchQuery) {
 // PUBLIC_INTERFACE
 function App() {
   /** Notes app entry point: manages notes state and persistence. */
-  const [notes, setNotes] = useState(() => loadNotesFromStorage());
-  const [selectedId, setSelectedId] = useState(() => loadNotesFromStorage()[0]?.id ?? null);
+  const [notes, setNotes] = useState(() => initNotesState().notes);
+  const [selectedId, setSelectedId] = useState(() => initNotesState().selectedId);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Keep storage in sync whenever notes change.
   useEffect(() => {
-    saveNotesToStorage(notes);
+    // Best-effort persistence; saveNotesSchema never throws and returns status if needed later.
+    saveNotesSchema(notes);
   }, [notes]);
 
   const orderedNotes = useMemo(() => sortNotesByUpdatedAtDesc(notes), [notes]);
