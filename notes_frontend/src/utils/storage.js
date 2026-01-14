@@ -201,7 +201,7 @@ export function normalizeNotes(rawNotes) {
  * @returns {NotesStorageSchemaV1|null}
  */
 function migrateToCurrentSchema(parsed) {
-  // v1
+  // v1: already versioned, but still normalize content (types/timestamps/dedup).
   if (
     parsed &&
     typeof parsed === 'object' &&
@@ -212,12 +212,13 @@ function migrateToCurrentSchema(parsed) {
     return { schemaVersion: CURRENT_SCHEMA_VERSION, notes };
   }
 
-  // v0: array
+  // v0: legacy shape was a bare array of notes; normalize and wrap in the current schema.
   if (Array.isArray(parsed)) {
     const notes = normalizeNotes(parsed);
     return { schemaVersion: CURRENT_SCHEMA_VERSION, notes };
   }
 
+  // Unknown/corrupt shapes are treated as non-migratable (caller will reset to defaults).
   return null;
 }
 
@@ -317,14 +318,28 @@ export function safeLoad(options) {
     }
 
     // If migration/normalization results in empty notes, seed a default.
+    // This covers cases where storage existed but was effectively unusable after normalization.
     const schema =
       migrated.notes && migrated.notes.length ? migrated : { schemaVersion: CURRENT_SCHEMA_VERSION, notes: createSeedNotes() };
 
-    const wasRepaired =
-      // We repaired if schema version changed (or was missing) or if normalization changed content.
+    // We consider the load "repaired" if:
+    // - schemaVersion was missing/incorrect, OR
+    // - normalization/dedup altered the notes compared to what was stored.
+    let wasRepaired =
       typeof parsedRes.value !== 'object' ||
       parsedRes.value === null ||
       parsedRes.value.schemaVersion !== CURRENT_SCHEMA_VERSION;
+
+    if (!wasRepaired) {
+      // Detect normalization changes even when schemaVersion is already current.
+      const originalNotes = Array.isArray(parsedRes.value?.notes) ? parsedRes.value.notes : [];
+      try {
+        wasRepaired = JSON.stringify(normalizeNotes(originalNotes)) !== JSON.stringify(schema.notes);
+      } catch (_) {
+        // If stringify fails for any reason, err on the side of persisting the repaired schema.
+        wasRepaired = true;
+      }
+    }
 
     if (persistOnFix && wasRepaired) {
       try {

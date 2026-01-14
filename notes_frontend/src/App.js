@@ -32,8 +32,14 @@ function filterNotes(notes, searchQuery) {
 // PUBLIC_INTERFACE
 function App() {
   /** Notes app entry point: manages notes state and persistence. */
-  const [notes, setNotes] = useState(() => initNotesState().notes);
-  const [selectedId, setSelectedId] = useState(() => initNotesState().selectedId);
+
+  // IMPORTANT: call initNotesState() only once.
+  // Even though it has an internal cache, calling it twice creates an avoidable double-load path
+  // and risks inconsistent initial state if future changes remove/alter that caching.
+  const initial = useMemo(() => initNotesState(), []);
+
+  const [notes, setNotes] = useState(() => initial.notes);
+  const [selectedId, setSelectedId] = useState(() => initial.selectedId);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Keep storage in sync whenever notes change.
